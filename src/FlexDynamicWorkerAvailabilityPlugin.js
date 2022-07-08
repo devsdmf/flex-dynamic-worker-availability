@@ -2,8 +2,23 @@ import React from 'react';
 import { VERSION } from '@twilio/flex-ui';
 import { FlexPlugin } from '@twilio/flex-plugin';
 
-import CustomTaskListContainer from './components/CustomTaskList/CustomTaskList.Container';
+import {
+  initClient as initSyncClient
+} from './services/SyncService';
+
 import reducers, { namespace } from './states';
+import { 
+  getWorkerId,
+  Actions as WorkerAvailabilityActions 
+} from './states/WorkerAvailabilityState';
+
+import {
+  subscribeToWorkerAvailability,
+} from './services/workerAvailability/WorkerAvailabilityService';
+
+import reservationHandler from './eventHandlers/reservationHandler';
+import afterAcceptTaskHandler from './eventHandlers/afterAcceptTaskHandler';
+import afterCompleteTaskHandler from './eventHandlers/afterCompleteTaskHandler';
 
 const PLUGIN_NAME = 'FlexDynamicWorkerAvailabilityPlugin';
 
@@ -22,8 +37,29 @@ export default class FlexDynamicWorkerAvailabilityPlugin extends FlexPlugin {
   async init(flex, manager) {
     this.registerReducers(manager);
 
-    const options = { sortOrder: -1 };
-    flex.AgentDesktopView.Panel1.Content.add(<CustomTaskListContainer key="FlexDynamicWorkerAvailabilityPlugin-component" />, options);
+    initSyncClient(manager);
+
+    manager.workerClient.on(
+      'reservationCreated', 
+      (r) => reservationHandler(manager.store.getState()[namespace])(r)
+    );
+
+    flex.Actions.addListener(
+      'afterAcceptTask', 
+      (p) => afterAcceptTaskHandler(manager.store.getState()[namespace], manager.store.dispatch)(p)
+    );
+
+    flex.Actions.addListener(
+      'afterCompleteTask',
+      (p) => afterCompleteTaskHandler(manager.store.getState()[namespace], manager.store.dispatch)(p)
+    );
+
+    manager.store.dispatch(WorkerAvailabilityActions.initWorkerAvailability());
+    
+    subscribeToWorkerAvailability(
+      getWorkerId(),
+      () => manager.store.dispatch(WorkerAvailabilityActions.refreshWorkerAvailability())
+    );
   }
 
   /**
