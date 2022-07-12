@@ -1,5 +1,6 @@
 import { Manager } from '@twilio/flex-ui';
 import { 
+  initWorkerAvailability,
   getWorkerAvailability,
   updateWorkerAvailability
 } from '../services/workerAvailability/WorkerAvailabilityService';
@@ -17,10 +18,22 @@ export const getWorkerId = () => Manager.getInstance()
   .worker
   .name;
 
+const getWorkerTasks = () => Manager.getInstance()
+  .store
+  .getState()
+  .flex
+  .worker
+  .tasks;
+
 export const Actions = {
   initWorkerAvailability: () => ({
     type: ACTION_REFRESH_WORKER_AVAILABILITY,
-    payload: getWorkerAvailability(getWorkerId()),
+    payload: getWorkerAvailability(getWorkerId())
+      .then(workerAvailability => {
+        workerAvailability.activeTasks = getWorkerTasks().size;
+        return workerAvailability;
+      })
+      .then(updatedAvailability => updateWorkerAvailability(getWorkerId(), updatedAvailability)),
   }),
   refreshWorkerAvailability: () => ({
     type: ACTION_REFRESH_WORKER_AVAILABILITY,
