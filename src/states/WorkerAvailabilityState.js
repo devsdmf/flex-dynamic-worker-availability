@@ -15,8 +15,8 @@ export const getWorkerId = () => Manager.getInstance()
   .getState()
   .flex
   .worker
-  .worker
-  .name;
+  .attributes
+  .twilio_contact_identity;
 
 const getWorkerTasks = () => Manager.getInstance()
   .store
